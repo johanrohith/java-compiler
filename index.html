@@ -15,8 +15,13 @@
             box-sizing: border-box;
         }
 
+        html,
         body {
             margin: 0;
+            padding: 0;
+        }
+
+        body {
             background: #0f1117;
             color: #ffffff;
             font-family: Arial, sans-serif;
@@ -92,20 +97,26 @@
             margin: 12px 2px;
             min-height: 24px;
             white-space: pre-wrap;
+
             font-family: Consolas, "Courier New", monospace;
             color: #cbd1dc;
         }
 
+        /*
+         * LARGE OUTPUT AREA
+         */
         #output {
             margin-top: 12px;
 
             border: 1px solid #30343d;
-            border-radius: 10px;
+            border-radius: 12px;
 
             background: #161922;
 
-            min-height: 320px;
-            overflow: hidden;
+            width: 100%;
+            min-height: 650px;
+
+            overflow: auto;
         }
 
         #console {
@@ -119,9 +130,18 @@
             min-height: 40px;
         }
 
+        /*
+         * Large CheerpJ display.
+         *
+         * -1, -1 below tells CheerpJ to use
+         * the full size of this container.
+         */
         #cheerpjDisplay {
             width: 100%;
-            min-height: 250px;
+            height: 600px;
+            min-height: 600px;
+
+            overflow: visible;
         }
     </style>
 </head>
@@ -154,26 +174,48 @@
     <div id="status">Ready.</div>
 
     <div id="output">
+
         <div id="console"></div>
+
         <div id="cheerpjDisplay"></div>
+
     </div>
 
 </div>
 
 <script type="module">
 
-    const source = document.getElementById("source");
-    const status = document.getElementById("status");
-    const consoleBox = document.getElementById("console");
-    const output = document.getElementById("output");
+    const source =
+        document.getElementById("source");
 
-    const runButton = document.getElementById("run");
-    const clearButton = document.getElementById("clear");
-    const exampleButton = document.getElementById("example");
-    const toggleOutputButton = document.getElementById("toggleOutput");
+    const status =
+        document.getElementById("status");
+
+    const consoleBox =
+        document.getElementById("console");
+
+    const output =
+        document.getElementById("output");
+
+    const runButton =
+        document.getElementById("run");
+
+    const clearButton =
+        document.getElementById("clear");
+
+    const exampleButton =
+        document.getElementById("example");
+
+    const toggleOutputButton =
+        document.getElementById("toggleOutput");
+
 
     let cheerpjReady = false;
 
+
+    /*
+     * Example Java AWT program
+     */
     const exampleCode = `import java.awt.*;
 import java.awt.event.*;
 
@@ -194,141 +236,234 @@ class HelloAWT extends Frame {
     }
 }`;
 
-    exampleButton.addEventListener("click", () => {
-        source.value = exampleCode;
-        status.textContent = "Example inserted.";
-    });
 
-    clearButton.addEventListener("click", () => {
-        source.value = "";
-        consoleBox.textContent = "";
-        status.textContent = "Ready.";
-    });
+    /*
+     * Insert Example
+     */
+    exampleButton.addEventListener(
+        "click",
+        () => {
 
-    toggleOutputButton.addEventListener("click", () => {
+            source.value = exampleCode;
 
-        if (output.style.display === "none") {
-            output.style.display = "block";
-            toggleOutputButton.textContent = "Hide Output";
-        } else {
-            output.style.display = "none";
-            toggleOutputButton.textContent = "Show Output";
+            status.textContent =
+                "Example inserted.";
         }
-    });
+    );
 
+
+    /*
+     * Clear everything
+     */
+    clearButton.addEventListener(
+        "click",
+        () => {
+
+            source.value = "";
+
+            consoleBox.textContent = "";
+
+            status.textContent = "Ready.";
+        }
+    );
+
+
+    /*
+     * Show / Hide Output
+     */
+    toggleOutputButton.addEventListener(
+        "click",
+        () => {
+
+            if (output.style.display === "none") {
+
+                output.style.display = "block";
+
+                toggleOutputButton.textContent =
+                    "Hide Output";
+
+            } else {
+
+                output.style.display = "none";
+
+                toggleOutputButton.textContent =
+                    "Show Output";
+            }
+        }
+    );
+
+
+    /*
+     * Find the main class
+     */
     function findMainClass(code) {
 
-        // package declaration
-        const packageMatch = code.match(
-            /\bpackage\s+([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*;/
-        );
+        const packageMatch =
+            code.match(
+                /\bpackage\s+([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*;/
+            );
 
-        // Prefer public class
-        let classMatch = code.match(
-            /\bpublic\s+class\s+([A-Za-z_$][\w$]*)/
-        );
 
-        // Otherwise normal class
+        let classMatch =
+            code.match(
+                /\bpublic\s+class\s+([A-Za-z_$][\w$]*)/
+            );
+
+
         if (!classMatch) {
-            classMatch = code.match(
-                /\bclass\s+([A-Za-z_$][\w$]*)/
+
+            classMatch =
+                code.match(
+                    /\bclass\s+([A-Za-z_$][\w$]*)/
+                );
+        }
+
+
+        if (!classMatch) {
+
+            throw new Error(
+                "No class declaration found."
             );
         }
 
-        if (!classMatch) {
-            throw new Error("No class declaration found.");
-        }
 
-        const className = classMatch[1];
+        const className =
+            classMatch[1];
+
 
         if (packageMatch) {
-            return packageMatch[1] + "." + className;
+
+            return (
+                packageMatch[1] +
+                "." +
+                className
+            );
         }
+
 
         return className;
     }
 
+
+    /*
+     * Initialize CheerpJ
+     */
     async function initializeCheerpJ() {
 
         if (cheerpjReady) {
             return;
         }
 
-        status.textContent = "Starting Java runtime...";
+
+        status.textContent =
+            "Starting Java runtime...";
+
 
         /*
-         * IMPORTANT:
-         * Do NOT specify version:17 here.
-         *
-         * tools.jar is a Java 8 compiler.
-         * CheerpJ defaults to Java 8 when version is omitted.
+         * Java 8 is used by default.
          */
-
         await cheerpjInit({
             status: "none"
         });
 
+
+        /*
+         * Use the entire output container.
+         */
         cheerpjCreateDisplay(
             -1,
             -1,
-            document.getElementById("cheerpjDisplay")
+            document.getElementById(
+                "cheerpjDisplay"
+            )
         );
+
 
         cheerpjReady = true;
     }
 
+
+    /*
+     * Compile and Run
+     */
     async function compileAndRun() {
 
         runButton.disabled = true;
 
         consoleBox.textContent = "";
-        status.textContent = "Starting...";
+
+        status.textContent =
+            "Starting...";
+
 
         try {
 
-            const code = source.value.trim();
+            const code =
+                source.value.trim();
+
 
             if (!code) {
-                throw new Error("The editor is empty.");
+
+                throw new Error(
+                    "The editor is empty."
+                );
             }
+
 
             await initializeCheerpJ();
 
-            const mainClass = findMainClass(code);
+
+            const mainClass =
+                findMainClass(code);
+
 
             const simpleClassName =
-                mainClass.split(".").pop();
+                mainClass
+                    .split(".")
+                    .pop();
+
 
             /*
-             * The source file is placed in /str/.
+             * Put source code into /str/
              */
             const sourceFile =
-                "/str/" + simpleClassName + ".java";
+                "/str/" +
+                simpleClassName +
+                ".java";
+
 
             cheerpOSAddStringFile(
                 sourceFile,
                 new TextEncoder().encode(code)
             );
 
+
             /*
-             * This is the same classpath structure used
-             * by the current JavaFiddle implementation.
+             * tools.jar is hosted in the
+             * Java compiler project root.
              */
-            const classPath = "/app/java-compiler/tools.jar:/files/";
+            const classPath =
+                "/app/tools.jar:/files/";
+
 
             status.textContent =
-                "Compiling " + simpleClassName + "...";
+                "Compiling " +
+                simpleClassName +
+                "...";
+
 
             /*
-             * Run Java compiler.
+             * Compile Java source.
              */
-            const compileResult = await cheerpjRunMain(
-                "com.sun.tools.javac.Main",
-                classPath,
-                sourceFile,
-                "-d",
-                "/files/"
-            );
+            const compileResult =
+                await cheerpjRunMain(
+                    "com.sun.tools.javac.Main",
+                    classPath,
+                    sourceFile,
+                    "-d",
+                    "/files/"
+                );
+
 
             if (Number(compileResult) !== 0) {
 
@@ -338,27 +473,44 @@ class HelloAWT extends Frame {
                 return;
             }
 
-            status.textContent =
-                "Running " + mainClass + "...";
 
             /*
-             * Run the compiled Java program.
+             * Run compiled class.
              */
-            const runResult = await cheerpjRunMain(
-                mainClass,
-                classPath
-            );
+            status.textContent =
+                "Running " +
+                mainClass +
+                "...";
+
+
+            const runResult =
+                await cheerpjRunMain(
+                    mainClass,
+                    classPath
+                );
+
 
             status.textContent =
-                "Program finished. Exit code: " + runResult;
+                "Program finished. Exit code: " +
+                runResult;
+
 
         } catch (error) {
 
             consoleBox.textContent =
-                String(error?.stack || error);
+                String(
+                    error?.stack ||
+                    error
+                );
+
 
             status.textContent =
-                "Error: " + String(error?.message || error);
+                "Error: " +
+                String(
+                    error?.message ||
+                    error
+                );
+
 
         } finally {
 
@@ -366,24 +518,40 @@ class HelloAWT extends Frame {
         }
     }
 
+
+    /*
+     * Compile & Run button
+     */
     runButton.addEventListener(
         "click",
         compileAndRun
     );
 
+
+    /*
+     * Browser errors
+     */
     window.addEventListener(
         "error",
         (event) => {
+
             consoleBox.textContent +=
-                "\n" + event.message;
+                "\n" +
+                event.message;
         }
     );
 
+
+    /*
+     * Promise errors
+     */
     window.addEventListener(
         "unhandledrejection",
         (event) => {
+
             consoleBox.textContent +=
-                "\n" + String(event.reason);
+                "\n" +
+                String(event.reason);
         }
     );
 
