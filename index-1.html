@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Java AWT Compiler</title>
+<script src="https://cjrtnc.leaningtech.com/4.3/loader.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0f1117;color:#eee;font-family:Arial,sans-serif}header{padding:14px 18px;border-bottom:1px solid #30333d;font-size:20px;font-weight:700}.bar{display:flex;gap:12px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid #30333d}button{border:0;border-radius:12px;padding:14px 20px;font-size:18px;font-weight:700;background:#2a2e3a;color:#fff}button.run{background:#2867e8}button:disabled{opacity:.55}.wrap{padding:14px 18px}.editor{width:100%;height:58vh;min-height:360px;background:#fff;color:#111;border:0;border-radius:10px;padding:14px;font:16px/1.45 monospace;resize:vertical;white-space:pre;overflow:auto}.status{padding:10px 4px;color:#b8bdca;white-space:pre-wrap}.output{min-height:320px;border:1px solid #30333d;border-radius:10px;background:#161922;overflow:hidden}#console{padding:10px;font-family:monospace;white-space:pre-wrap;color:#ddd}.note{font-size:13px;color:#9298a8;margin:8px 2px 14px}
+</style>
+</head>
+<body>
+<header>Java AWT Compiler</header>
+<div class="bar">
+<button class="run" id="run">▶ Compile &amp; Run</button>
+<button id="clear">Clear</button>
+<button id="example">Insert Example</button>
+<button id="hide">Hide Output</button>
+</div>
+<div class="wrap">
+<div class="note">Write your own Java program. No Review Form is built in.</div>
+<textarea id="source" class="editor" spellcheck="false" placeholder="Paste your Java code here..."></textarea>
+<div id="status" class="status">Ready.</div>
+<div id="output" class="output"><div id="console"></div><div id="cheerpjDisplay"></div></div>
+</div>
+<script type="module">
+const source=document.getElementById('source');
+const status=document.getElementById('status');
+const consoleBox=document.getElementById('console');
+const output=document.getElementById('output');
+const runBtn=document.getElementById('run');
+
+const TOOLS_URLS=[
+  'https://cdn.jsdelivr.net/gh/leaningtech/javafiddle@main/static/tools.jar',
+  'https://raw.githubusercontent.com/leaningtech/javafiddle/main/static/tools.jar',
+  'https://github.com/leaningtech/javafiddle/raw/refs/heads/main/static/tools.jar'
+];
+let initialized=false, toolsLoaded=false;
+
+const example=`import java.awt.*;\n\nclass HelloAWT extends Frame {\n    HelloAWT() {\n        setTitle("Hello AWT");\n        setSize(400, 250);\n        setLayout(new FlowLayout());\n        add(new Label("Hello from Java AWT!"));\n        setVisible(true);\n    }\n\n    public static void main(String args[]) {\n        new HelloAWT();\n    }\n}`;
+
+document.getElementById('example').onclick=()=>{source.value=example; status.textContent='Example inserted.'};
+document.getElementById('clear').onclick=()=>{source.value=''; consoleBox.textContent=''; status.textContent='Ready.'};
+document.getElementById('hide').onclick=()=>{output.style.display=output.style.display==='none'?'block':'none'; document.getElementById('hide').textContent=output.style.display==='none'?'Show Output':'Hide Output'};
+
+async function init(){
+  if(initialized)return;
+  status.textContent='Starting Java runtime...';
+  await cheerpjInit({version:17,status:'none'});
+  cheerpjCreateDisplay(-1,-1,document.getElementById('cheerpjDisplay'));
+  initialized=true;
+}
+
+async function loadTools(){
+  if(toolsLoaded)return;
+  status.textContent='Downloading Java compiler (first run only)...';
+  let last='';
+  for(const url of TOOLS_URLS){
+    try{
+      const r=await fetch(url,{cache:'force-cache'});
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      const bytes=new Uint8Array(await r.arrayBuffer());
+      if(bytes.length<1000000)throw new Error('Downloaded file is too small');
+      cheerpOSAddStringFile('/str/tools.jar',bytes);
+      toolsLoaded=true;
+      status.textContent='Java compiler loaded.';
+      return;
+    }catch(e){last=url+': '+e.message}
+  }
+  throw new Error('Could not download the Java compiler. Your network/browser is blocking the compiler file. Last attempt: '+last);
+}
+
+function mainClass(code){
+  const p=code.match(/\bpackage\s+([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*;/);
+  const c=code.match(/\bclass\s+([A-Za-z_$][\w$]*)/);
+  if(!c)throw new Error('No class declaration found.');
+  return (p?p[1]+'.':'')+c[1];
+}
+
+async function compileRun(){
+  runBtn.disabled=true; consoleBox.textContent='';
+  try{
+    await init();
+    await loadTools();
+    const code=source.value;
+    if(!code.trim())throw new Error('Editor is empty.');
+    const cls=mainClass(code);
+    const file=cls.split('.').pop()+'.java';
+    cheerpOSAddStringFile('/str/'+file,new TextEncoder().encode(code));
+    status.textContent='Compiling...';
+    const cp='/str/tools.jar:/files/';
+    const rc=await cheerpjRunMain('com.sun.tools.javac.Main',cp,'/str/'+file,'-d','/files/');
+    if(Number(rc)!==0){status.textContent='Compilation failed. Check the compiler output.';return;}
+    status.textContent='Running '+cls+'...';
+    await cheerpjRunMain(cls,cp);
+    status.textContent='Finished.';
+  }catch(e){
+    status.textContent='Error: '+(e?.message||e);
+    consoleBox.textContent+=String(e?.stack||e)+'\n';
+  }finally{runBtn.disabled=false}
+}
+runBtn.onclick=compileRun;
+</script>
+</body>
+</html>
