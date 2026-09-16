@@ -7,7 +7,6 @@
 
     <title>Java AWT Compiler</title>
 
-    <!-- CheerpJ 4.3 -->
     <script src="https://cjrtnc.leaningtech.com/4.3/loader.js"></script>
 
     <style>
@@ -42,7 +41,8 @@
             border-bottom: 1px solid #30343d;
         }
 
-        button {
+        /* Only style the website buttons */
+        .toolbar button {
             border: none;
             border-radius: 10px;
             padding: 13px 18px;
@@ -53,11 +53,11 @@
             cursor: pointer;
         }
 
-        button.run {
+        .toolbar button.run {
             background: #2867e8;
         }
 
-        button:disabled {
+        .toolbar button:disabled {
             opacity: 0.55;
             cursor: not-allowed;
         }
@@ -72,7 +72,8 @@
             font-size: 14px;
         }
 
-        textarea {
+        /* Only style the source editor */
+        #source {
             width: 100%;
             height: 55vh;
             min-height: 350px;
@@ -103,7 +104,7 @@
         }
 
         /*
-         * LARGE OUTPUT AREA
+         * Large output area for AWT applications.
          */
         #output {
             margin-top: 12px;
@@ -114,7 +115,7 @@
             background: #161922;
 
             width: 100%;
-            min-height: 650px;
+            min-height: 700px;
 
             overflow: auto;
         }
@@ -130,12 +131,6 @@
             min-height: 40px;
         }
 
-        /*
-         * Large CheerpJ display.
-         *
-         * -1, -1 below tells CheerpJ to use
-         * the full size of this container.
-         */
         #cheerpjDisplay {
             width: 100%;
             height: 600px;
@@ -153,7 +148,7 @@
 </header>
 
 <div class="toolbar">
-    <button id="run" class="run">▶ Compile & Run</button>
+    <button id="run" class="run">▶ Compile &amp; Run</button>
     <button id="clear">Clear</button>
     <button id="example">Insert Example</button>
     <button id="toggleOutput">Hide Output</button>
@@ -174,47 +169,30 @@
     <div id="status">Ready.</div>
 
     <div id="output">
-
         <div id="console"></div>
-
         <div id="cheerpjDisplay"></div>
-
     </div>
 
 </div>
 
 <script type="module">
 
-    const source =
-        document.getElementById("source");
+    const source = document.getElementById("source");
+    const status = document.getElementById("status");
+    const consoleBox = document.getElementById("console");
+    const output = document.getElementById("output");
 
-    const status =
-        document.getElementById("status");
-
-    const consoleBox =
-        document.getElementById("console");
-
-    const output =
-        document.getElementById("output");
-
-    const runButton =
-        document.getElementById("run");
-
-    const clearButton =
-        document.getElementById("clear");
-
-    const exampleButton =
-        document.getElementById("example");
-
+    const runButton = document.getElementById("run");
+    const clearButton = document.getElementById("clear");
+    const exampleButton = document.getElementById("example");
     const toggleOutputButton =
         document.getElementById("toggleOutput");
-
 
     let cheerpjReady = false;
 
 
     /*
-     * Example Java AWT program
+     * Example AWT program
      */
     const exampleCode = `import java.awt.*;
 import java.awt.event.*;
@@ -240,57 +218,41 @@ class HelloAWT extends Frame {
     /*
      * Insert Example
      */
-    exampleButton.addEventListener(
-        "click",
-        () => {
+    exampleButton.addEventListener("click", () => {
 
-            source.value = exampleCode;
+        source.value = exampleCode;
 
-            status.textContent =
-                "Example inserted.";
-        }
-    );
+        status.textContent = "Example inserted.";
+    });
 
 
     /*
-     * Clear everything
+     * Clear editor and console
      */
-    clearButton.addEventListener(
-        "click",
-        () => {
+    clearButton.addEventListener("click", () => {
 
-            source.value = "";
-
-            consoleBox.textContent = "";
-
-            status.textContent = "Ready.";
-        }
-    );
+        source.value = "";
+        consoleBox.textContent = "";
+        status.textContent = "Ready.";
+    });
 
 
     /*
-     * Show / Hide Output
+     * Show / Hide output
      */
-    toggleOutputButton.addEventListener(
-        "click",
-        () => {
+    toggleOutputButton.addEventListener("click", () => {
 
-            if (output.style.display === "none") {
+        if (output.style.display === "none") {
 
-                output.style.display = "block";
+            output.style.display = "block";
+            toggleOutputButton.textContent = "Hide Output";
 
-                toggleOutputButton.textContent =
-                    "Hide Output";
+        } else {
 
-            } else {
-
-                output.style.display = "none";
-
-                toggleOutputButton.textContent =
-                    "Show Output";
-            }
+            output.style.display = "none";
+            toggleOutputButton.textContent = "Show Output";
         }
-    );
+    });
 
 
     /*
@@ -298,48 +260,30 @@ class HelloAWT extends Frame {
      */
     function findMainClass(code) {
 
-        const packageMatch =
-            code.match(
-                /\bpackage\s+([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*;/
-            );
+        const packageMatch = code.match(
+            /\bpackage\s+([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*;/
+        );
 
-
-        let classMatch =
-            code.match(
-                /\bpublic\s+class\s+([A-Za-z_$][\w$]*)/
-            );
-
+        let classMatch = code.match(
+            /\bpublic\s+class\s+([A-Za-z_$][\w$]*)/
+        );
 
         if (!classMatch) {
 
-            classMatch =
-                code.match(
-                    /\bclass\s+([A-Za-z_$][\w$]*)/
-                );
-        }
-
-
-        if (!classMatch) {
-
-            throw new Error(
-                "No class declaration found."
+            classMatch = code.match(
+                /\bclass\s+([A-Za-z_$][\w$]*)/
             );
         }
 
+        if (!classMatch) {
+            throw new Error("No class declaration found.");
+        }
 
-        const className =
-            classMatch[1];
-
+        const className = classMatch[1];
 
         if (packageMatch) {
-
-            return (
-                packageMatch[1] +
-                "." +
-                className
-            );
+            return packageMatch[1] + "." + className;
         }
-
 
         return className;
     }
@@ -354,30 +298,18 @@ class HelloAWT extends Frame {
             return;
         }
 
-
         status.textContent =
             "Starting Java runtime...";
 
-
-        /*
-         * Java 8 is used by default.
-         */
         await cheerpjInit({
             status: "none"
         });
 
-
-        /*
-         * Use the entire output container.
-         */
         cheerpjCreateDisplay(
             -1,
             -1,
-            document.getElementById(
-                "cheerpjDisplay"
-            )
+            document.getElementById("cheerpjDisplay")
         );
-
 
         cheerpjReady = true;
     }
@@ -391,46 +323,28 @@ class HelloAWT extends Frame {
         runButton.disabled = true;
 
         consoleBox.textContent = "";
-
-        status.textContent =
-            "Starting...";
-
+        status.textContent = "Starting...";
 
         try {
 
-            const code =
-                source.value.trim();
-
+            const code = source.value.trim();
 
             if (!code) {
-
-                throw new Error(
-                    "The editor is empty."
-                );
+                throw new Error("The editor is empty.");
             }
-
 
             await initializeCheerpJ();
 
-
-            const mainClass =
-                findMainClass(code);
-
+            const mainClass = findMainClass(code);
 
             const simpleClassName =
-                mainClass
-                    .split(".")
-                    .pop();
-
+                mainClass.split(".").pop();
 
             /*
-             * Put source code into /str/
+             * Place source in CheerpJ /str/ filesystem.
              */
             const sourceFile =
-                "/str/" +
-                simpleClassName +
-                ".java";
-
+                "/str/" + simpleClassName + ".java";
 
             cheerpOSAddStringFile(
                 sourceFile,
@@ -439,10 +353,11 @@ class HelloAWT extends Frame {
 
 
             /*
-             * tools.jar is hosted in the
-             * Java compiler project root.
+             * IMPORTANT:
+             * This is your working tools.jar path.
              */
-            const classPath = "/app/java-compiler/tools.jar:/files/";
+            const classPath =
+                "/app/java-compiler/tools.jar:/files/";
 
 
             status.textContent =
@@ -452,7 +367,7 @@ class HelloAWT extends Frame {
 
 
             /*
-             * Compile Java source.
+             * Run javac.
              */
             const compileResult =
                 await cheerpjRunMain(
@@ -474,7 +389,7 @@ class HelloAWT extends Frame {
 
 
             /*
-             * Run compiled class.
+             * Run the compiled Java program.
              */
             status.textContent =
                 "Running " +
@@ -482,6 +397,9 @@ class HelloAWT extends Frame {
                 "...";
 
 
+            /*
+             * Start the Java application.
+             */
             const runResult =
                 await cheerpjRunMain(
                     mainClass,
@@ -493,7 +411,6 @@ class HelloAWT extends Frame {
                 "Program finished. Exit code: " +
                 runResult;
 
-
         } catch (error) {
 
             consoleBox.textContent =
@@ -502,14 +419,12 @@ class HelloAWT extends Frame {
                     error
                 );
 
-
             status.textContent =
                 "Error: " +
                 String(
                     error?.message ||
                     error
                 );
-
 
         } finally {
 
@@ -519,7 +434,7 @@ class HelloAWT extends Frame {
 
 
     /*
-     * Compile & Run button
+     * Compile & Run
      */
     runButton.addEventListener(
         "click",
@@ -542,7 +457,7 @@ class HelloAWT extends Frame {
 
 
     /*
-     * Promise errors
+     * Unhandled promise errors
      */
     window.addEventListener(
         "unhandledrejection",
